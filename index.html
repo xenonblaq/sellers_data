@@ -28,7 +28,7 @@
         #header {
             width: 100%;
             height: 60px;
-            background-color: #2b2765; /* Цвет прямоугольника */
+            background-color: #5C4B9A; /* Цвет прямоугольника */
             position: fixed;
             top: 0;
             left: 0;
@@ -68,7 +68,7 @@
         }
 
         .select2-container--default .select2-selection--single .select2-selection__rendered {
-            color: #2b2765;
+            color: #5C4B9A;
             font-family: 'DIN Pro', sans-serif;
         }
 
@@ -79,7 +79,7 @@
         /* Цвет для отключенного выпадающего списка */
         .select2-container--default.select2-container--disabled .select2-selection--single {
             background-color: #e6e6fa !important; /* Лавандовый цвет даже когда отключено */
-            color: #2b2765;
+            color: #5C4B9A;
         }
 
         input[type="text"] {
@@ -94,13 +94,13 @@
             padding: 10px 20px;
             font-family: 'DIN Pro', sans-serif;
             color: white;
-            background-color: #2b2765;
+            background-color: #5C4B9A;
             border: none;
             cursor: pointer;
         }
 
         button:hover {
-            background-color: #3c3885;
+            background-color: #5C4B9A;
         }
 
         .instruction {
@@ -165,8 +165,8 @@
 <div id="dropdownPage">
     <p class="instruction">
         Добавьте данные о продажах. Для этого в выпадающих списках найдите нужного контрагента, конечного получателя, 
-        продуктовое направление<br> и номенклатуру. Далее нажмите кнопку «Добавить».
-        Обратите внимание: выбрать номенклатуру можно лишь после выбора направления.
+        номенклатурную группу<br> и номенклатуру. Далее нажмите кнопку «Добавить».
+        Обратите внимание: выбрать номенклатуру можно лишь после выбора группы.
         Если же вам нужно внести данные о нескольких продажах, повторите предыдущий алгоритм.
         Когда все данные будут добавлены, нажмите кнопку «Скачать Excel» для финального результата.<br>
         <br>
@@ -190,7 +190,8 @@
             </select>
 
             <!-- Четвертый выпадающий список (товары по выбранной категории) -->
-            <select class="select2" id="dropdownGood" disabled>
+            <select class="select2" id="dropdownGood" disabled multiple>
+                <option value="all">Выбрать все</option>
                 <option value="">Номенклатура</option>
             </select>
         </div>
@@ -206,63 +207,91 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="agents.js"></script> <!-- Подключаем файл со словарем agents -->
+<script src="goods.js"></script> <!-- Подключаем файл со словарем agents -->
 
 <script>
     $(document).ready(function() {
         let excelData = [];  // Массив для хранения строк данных
+
+        const headers = ["УИД Контрагент", "Контрагент.Код", "Контрагент", "УИД Конечный получатель", "Конечный получатель код",
+         "Конечный получатель", "УИД Продуктовое направление", "Продуктовое направление", "УИД Номенклатурная группа", "Номенклатурная группа",
+          "УИД Номенклатура", "Номенклатура", "УИД Единица измерения", "Единица измерения", "Цена с НДС за единицу измерения в валюте", "Валюта"]
+          excelData.push(headers);
 
         $('.select2').select2();
 
         // Показать начальную страницу
         $('#namePage').show();
 
-        // Обработчик нажатия кнопки "Старт"
-        $('#startBtn').on('click', function() {
-            let userName = $('#userName').val();
-            if (!userName) {
-                alert("Введите ваше имя");
-                return;
-            }
+        let userNameGlobal = ''; // Глобальная переменная для хранения имени пользователя
 
-            // Проверяем, есть ли имя в словаре agents
-            if (agents[userName]) {
-                let products = agents[userName];
+  // Обработчик нажатия кнопки "Старт"
+  $('#startBtn').on('click', startProcess);
 
-                // Обновляем списки продуктов (первый и второй)
-                updateDropdown1Options(products);
-                updateDropdown3Options(products);
+// Обработчик нажатия Enter в поле ввода имени
+$('#userName').on('keydown', function(e) {
+    if (e.keyCode === 13) {  // Проверяем, нажата ли клавиша Enter
+        startProcess();
+    }
+});
 
-                // Обновляем список категорий в третьем выпадающем списке
-                updateDropdownCategoryOptions();
+// Функция для запуска процесса при нажатии кнопки "Старт" или "Enter"
+function startProcess() {
+    let userName = $('#userName').val().charAt(0).toUpperCase() + $('#userName').val().slice(1).toLowerCase();
+    if (!userName) {
+        alert("Введите ваше имя");
+        return;
+    }
 
-                // Скрыть страницу с вводом имени и показать страницу с выпадающими списками
-                $('#namePage').hide();
-                $('#dropdownPage').show();
-            } else {
-                alert("Имя не найдено в базе");
-            }
-        });
+    // Сохранение значения userName в глобальной переменной
+    userNameGlobal = userName;
+    console.log(agents)
+    // Проверяем, есть ли имя в словаре agents
+    if (agents[userName]) {
+        let products = agents[userName];
+
+        // Обновляем списки продуктов (первый и второй)
+        updateDropdown1Options(products);
+        updateDropdown3Options(products);
+
+        // Обновляем список категорий в третьем выпадающем списке
+        updateDropdownCategoryOptions();
+
+        // Скрыть страницу с вводом имени и показать страницу с выпадающими списками
+        $('#namePage').hide();
+        $('#dropdownPage').show();
+    } else {
+        alert("Имя не найдено в базе");
+    }
+}
+
 
         // Функция для обновления первого и второго выпадающего списка с продуктами
         function updateDropdown1Options(products) {
-            $('#dropdown1').empty().append('<option value="">Контрагент</option>');
-            products.forEach(function(product) {
-                $('#dropdown1').append('<option value="' + product + '">' + product + '</option>');
-            });
-            $('#dropdown1').select2(); // Перезапуск select2 для обновленного списка
-        }
+    $('#dropdown1').empty().append('<option value="">Контрагент</option>');
+    
+    // Для каждого элемента внутреннего массива отображаем только первый элемент
+    products.forEach(function(product) {
+        $('#dropdown1').append('<option value="' + product[0] + '">' + product[0] + '</option>');
+    });
+    
+    $('#dropdown1').select2(); // Перезапуск select2 для обновленного списка
+}
 
-                function updateDropdown3Options(products) {
-            $('#dropdown3').empty().append('<option value="">Конечник</option>');
-            products.forEach(function(product) {
-                $('#dropdown3').append('<option value="' + product + '">' + product + '</option>');
-            });
-            $('#dropdown3').select2(); // Перезапуск select2 для обновленного списка
-        }
+function updateDropdown3Options(products) {
+    $('#dropdown3').empty().append('<option value="">Конечник</option>');
+    
+    // Для каждого элемента внутреннего массива отображаем только первый элемент
+    products.forEach(function(product) {
+        $('#dropdown3').append('<option value="' + product[0] + '">' + product[0] + '</option>');
+    });
+    
+    $('#dropdown3').select2(); // Перезапуск select2 для обновленного списка
+}
 
         // Функция для обновления третьего выпадающего списка (категории)
         function updateDropdownCategoryOptions() {
-            $('#dropdownCategory').empty().append('<option value="">Направление</option>');
+            $('#dropdownCategory').empty().append('<option value="">Группа</option>');
             Object.keys(goods).forEach(function(category) {
                 $('#dropdownCategory').append('<option value="' + category + '">' + category + '</option>');
             });
@@ -282,44 +311,106 @@
             }
         });
 
-        // Функция для обновления четвертого выпадающего списка (товары)
-        function updateDropdownGoodOptions(category) {
-            $('#dropdownGood').empty().append('<option value="">Номенклатура</option>');
-            goods[category].forEach(function(good) {
-                $('#dropdownGood').append('<option value="' + good + '">' + good + '</option>');
-            });
-            $('#dropdownGood').select2(); // Перезапуск select2 для товаров
+// Функция для обновления четвертого выпадающего списка (товары)
+function updateDropdownGoodOptions(category) {
+    $('#dropdownGood').empty().append('<option value="all">Выбрать все</option>'); // Добавляем пункт "Выбрать все"
+    
+    // Для каждого элемента внутреннего массива отображаем только второй элемент
+    goods[category].forEach(function(good) {
+        // Кодируем значение номенклатуры, чтобы избежать проблем с кавычками
+        let encodedGood = encodeURIComponent(good[0]);
+        $('#dropdownGood').append('<option value="' + encodedGood + '">' + good[0] + '</option>');
+    });
+    
+    $('#dropdownGood').select2(); // Перезапуск select2 для товаров
+}
+
+// Обработчик выбора в выпадающем списке
+$('#dropdownGood').on('change', function() {
+    let selectedOptions = $(this).val();
+
+    if (selectedOptions.includes('all')) {
+        // Если выбран пункт "Выбрать все", выбираем все номенклатуры
+        $('#dropdownGood').next('.select2-container').find('.select2-selection__rendered').html('Выбрать все');
+        let allOptions = $('#dropdownGood option').map(function() {
+            return $(this).val();
+        }).get();
+        
+        $('#dropdownGood').val(allOptions).trigger('change'); // Отмечаем все опции
+    }
+});
+
+$('#addBtn').on('click', function() {
+    let product1Index = $('#dropdown1 option:selected').val();
+    let product2Index = $('#dropdown3 option:selected').val();
+    let category = $('#dropdownCategory option:selected').text();
+    let selectedGoods = $('#dropdownGood').val();  // Получаем массив выбранных номенклатур
+
+    // Используем глобальную переменную userNameGlobal
+    let userName = userNameGlobal;
+
+    // Проверяем, существуют ли данные для текущего пользователя в agents
+    if (!agents[userName] || !Array.isArray(agents[userName])) {
+        alert("Ошибка: данные для этого пользователя отсутствуют или они в неверном формате.");
+        return;
+    }
+
+    // Поиск выбранных элементов по индексу для первого и второго списков
+    let product1 = agents[userName].find(arr => arr[0] === product1Index);
+    let product2 = agents[userName].find(arr => arr[0] === product2Index);
+
+    if (!product1 || !product2) {
+        alert("Ошибка: не удалось найти данные для контрагента или конечного получателя.");
+        return;
+    }
+
+    // Проверяем, что категория выбрана корректно
+    if (!category || !goods[category]) {
+        alert("Ошибка: категория не выбрана или не найдена.");
+        return;
+    }
+
+    // Проверяем, что есть выбранные номенклатуры
+    if (!selectedGoods || selectedGoods.length === 0) {
+        alert("Пожалуйста, выберите хотя бы одну номенклатуру.");
+        return;
+    }
+
+    if (selectedGoods[0] == "all") {
+        selectedGoods = selectedGoods.slice(1);
+    }
+
+    // Теперь проходим по каждой выбранной номенклатуре и добавляем строку данных
+    selectedGoods.forEach(function(encodedGoodIndex) {
+        // Декодируем значение номенклатуры
+        let goodIndex = decodeURIComponent(encodedGoodIndex);
+        
+        // Находим соответствующий товар
+        let good = goods[category].find(arr => arr[0] === goodIndex);
+
+        if (!good) {
+            console.log(goodIndex)
+            alert("Ошибка: товар не найден.");
+            return;
         }
 
-        // Обработчик кнопки "Добавить"
-        $('#addBtn').on('click', function() {
-            let product1 = $('#dropdown1 option:selected').text();
-            let product2 = $('#dropdown3 option:selected').text();
-            let category = $('#dropdownCategory option:selected').text();
-            let good = $('#dropdownGood option:selected').text();
+        // Создаем строку данных для экспорта в Excel (по столбцам)
+        let rowData = [
+            product1[2], product1[1], product1[0], 
+            product2[2], product2[1], product2[0], 
+            good[1], good[1], good[2], good[3], good[4], good[0], good[5], good[6], good[7], good[8]
+        ];
 
-            // Проверка, что все поля заполнены
-            if (!product1 || !product2 || !category || !good) {
-                alert("Пожалуйста, выберите все варианты");
-                return;
-            }
+        // Добавляем строку данных в Excel
+        excelData.push(rowData);
+    });
 
-            // Разделение продуктов по запятой и создание строки данных
-            let productArray1 = product1.split(',').map(item => item.trim());
-            let productArray2 = product2.split(',').map(item => item.trim());
-
-            // Добавляем данные в строку Excel
-            let rowData = productArray1.concat(productArray2, category, good);
-
-            // Добавление строки данных в Excel
-            excelData.push(rowData);
-
-            // Очистка полей для следующего ввода
-            $('#dropdown1').val('').trigger('change');
-            $('#dropdown3').val('').trigger('change');
-            $('#dropdownCategory').val('').trigger('change');
-            $('#dropdownGood').prop('disabled', true).empty().append('<option value="">Номенклатура</option>');
-        });
+    // Очистка полей для следующего ввода
+    $('#dropdown1').val('').trigger('change');
+    $('#dropdown3').val('').trigger('change');
+    $('#dropdownCategory').val('').trigger('change');
+    $('#dropdownGood').prop('disabled', true).empty().append('<option value="">Номенклатура</option>');
+});
 
         // Обработчик кнопки "Скачать Excel"
         $('#downloadBtn').on('click', function() {
@@ -341,4 +432,3 @@
 
 </body>
 </html>
-
